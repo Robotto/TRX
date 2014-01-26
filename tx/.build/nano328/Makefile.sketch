@@ -1,0 +1,14 @@
+
+
+
+
+
+.build/nano328/src/tx.cpp : src/tx.ino
+	@mkdir -p .build/nano328/src
+	@echo src/tx.ino
+	@/usr/local/bin/ino preproc  -o $@ $^
+
+
+all : .build/nano328/src/tx.cpp
+	@true
+
