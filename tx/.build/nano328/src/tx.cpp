@@ -2,8 +2,11 @@
 #include <VirtualWire.h>
 void setup();
 void loop();
+void read_encoder();
+void read_buttons();
+void handle_tx();
 void pulse(unsigned int pulses, unsigned int delay_time);
-void seven_segment_write(int decimal);
+void seven_segment_write_number(int decimal);
 unsigned char decimal_to_seven_seg(int decimal);
 #line 1 "src/tx.ino"
 //#include <VirtualWire.h>
@@ -13,10 +16,12 @@ unsigned char decimal_to_seven_seg(int decimal);
 
 //                              A,B,C,D,E,F,G
 const int seven_segment_pins[]={1,2,3,4,5,6,7};
+//                             DP
+const int seven_segment_DP_pin=8;
 
-int pwm_led = 3;
-int blink_led =13;
-int TX_pin = 2;
+const int pwm_led = 3;
+const int blink_led =13;
+const int TX_pin = 2;
 
 const char *msg = "hello";
 
@@ -29,8 +34,11 @@ const char *msg_gr_6 = "GR6";
 const char *msg_gr_7 = "GR7";
 const char *msg_gr_8 = "GR8";
 
-const char *msg_off = "ALL_OFF";
+const char *msg_on = "ON";
+const char *msg_off = "OFF";
+const char *msg_kill = "ALL_OFF";
 
+int active_group=1;
 
 void setup() {
 
@@ -49,16 +57,35 @@ void setup() {
 
 void loop() {
 
+    seven_segment_write_number(active_group);
 
+    read_encoder(); //changes active group
+
+    read_buttons(); //fires at group
+
+    handle_tx(); //sends relevant string
+
+    pulse(5,5);
+
+
+}
+
+void read_encoder()
+{
+
+}
+
+void read_buttons()
+{
+
+}
+
+void handle_tx()
+{
     digitalWrite(blink_led, true); // Flash a light to show transmitting
-
     vw_send((uint8_t *)msg, strlen(msg));
     vw_wait_tx(); // Wait until the whole message is gone
     digitalWrite(blink_led, false);
-
-    pulse(1,20);
-
-
 }
 
 
@@ -73,7 +100,7 @@ void pulse(unsigned int pulses, unsigned int delay_time)
     }
 }
 
-void seven_segment_write(int decimal)
+void seven_segment_write_number(int decimal)
 {
     for(int i = 0; i<8; i++) digitalWrite(seven_segment_pins[i],0b00000001&(decimal_to_seven_seg(decimal)>>i));
 }
