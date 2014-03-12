@@ -1,5 +1,4 @@
-.build/nano328/VirtualWire/VirtualWire.d .build/nano328/VirtualWire/VirtualWire.o: /usr/share/arduino/libraries/VirtualWire/VirtualWire.cpp \
- /usr/share/arduino/libraries/VirtualWire/VirtualWire.h \
+.build/nano328/VirtualWire/VirtualWire.d .build/nano328/VirtualWire/VirtualWire.o: lib/VirtualWire/VirtualWire.cpp \
  /usr/share/arduino/hardware/arduino/cores/arduino/Arduino.h \
  /usr/share/arduino/hardware/arduino/cores/arduino/binary.h \
  /usr/share/arduino/hardware/arduino/cores/arduino/WCharacter.h \
@@ -11,4 +10,5 @@
  /usr/share/arduino/hardware/arduino/cores/arduino/new.h \
  /usr/share/arduino/hardware/arduino/variants/eightanaloginputs/pins_arduino.h \
  /usr/share/arduino/hardware/arduino/variants/eightanaloginputs/../standard/pins_arduino.h \
+ lib/VirtualWire/VirtualWire.h \
  /usr/share/arduino/libraries/VirtualWire/util/crc16.h

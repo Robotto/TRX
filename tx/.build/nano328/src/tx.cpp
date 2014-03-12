@@ -2,26 +2,30 @@
 #include <VirtualWire.h>
 void setup();
 void loop();
-void read_encoder();
-void read_buttons();
 void handle_tx();
-void pulse(unsigned int pulses, unsigned int delay_time);
 void seven_segment_write_number(int decimal);
 unsigned char decimal_to_seven_seg(int decimal);
 #line 1 "src/tx.ino"
 //#include <VirtualWire.h>
+//#define ENC_PORT PINC
+
 
 //TODO: Use decimal point in seven segment to indicate acitvation?
 
 
 //                              A,B,C,D,E,F,G
-const int seven_segment_pins[]={1,2,3,4,5,6,7};
+const int seven_segment_pins[]={2,3,4,5,6,7,8};
 //                             DP
-const int seven_segment_DP_pin=8;
+const int seven_segment_DP_pin=9;
 
-const int pwm_led = 3;
+
+const int ENC_A=14; //A0
+const int ENC_B=15; //A1
+const int ENC_BTN=10; //A2
+
+
 const int blink_led =13;
-const int TX_pin = 2;
+const int TX_pin = 11;
 
 const char *msg = "hello";
 
@@ -34,17 +38,23 @@ const char *msg_gr_6 = "GR6";
 const char *msg_gr_7 = "GR7";
 const char *msg_gr_8 = "GR8";
 
-const char *msg_on = "ON";
-const char *msg_off = "OFF";
+const char *msg_off = "ON";
 const char *msg_kill = "ALL_OFF";
 
 int active_group=1;
 
 void setup() {
 
+    //7seg:
   for(int i = 0; i<8; i++) pinMode(seven_segment_pins[i],OUTPUT);
+  pinMode(seven_segment_DP_pin, OUTPUT);
 
-  pinMode(pwm_led, OUTPUT);
+   //encoder
+  pinMode(ENC_A, INPUT_PULLUP);
+  pinMode(ENC_B, INPUT_PULLUP);
+  pinMode(ENC_BTN, INPUT_PULLUP);
+
+
 
    // Initialise the IO and ISR
    vw_set_tx_pin(TX_pin);
@@ -55,30 +65,36 @@ void setup() {
 
 }
 
-void loop() {
+void loop()
+{
 
-    seven_segment_write_number(active_group);
 
-    read_encoder(); //changes active group
+    //read_encoder(); //changes active group
 
-    read_buttons(); //fires at group
+    //read_buttons(); //fires at group
+
 
     handle_tx(); //sends relevant string
 
-    pulse(5,5);
+    seven_segment_write_number(active_group);
+
+    if(active_group%2) digitalWrite(seven_segment_DP_pin,HIGH);
+    else digitalWrite(seven_segment_DP_pin,LOW);
+
+    active_group++;
+    if(active_group>0xf) active_group=0;
+
+    delay(2000);
+
+
+
+
 
 
 }
 
-void read_encoder()
-{
 
-}
 
-void read_buttons()
-{
-
-}
 
 void handle_tx()
 {
@@ -89,6 +105,7 @@ void handle_tx()
 }
 
 
+/*
 void pulse(unsigned int pulses, unsigned int delay_time)
 {
     int val;
@@ -99,29 +116,30 @@ void pulse(unsigned int pulses, unsigned int delay_time)
         pulses--;
     }
 }
+*/
 
 void seven_segment_write_number(int decimal)
 {
     for(int i = 0; i<8; i++) digitalWrite(seven_segment_pins[i],0b00000001&(decimal_to_seven_seg(decimal)>>i));
 }
 
-unsigned char decimal_to_seven_seg(int decimal) //common anode
-{
-    if (decimal==0) return 0b1000000;
-    if (decimal==1) return 0b1111001;
-    if (decimal==2) return 0b0100100;
-    if (decimal==3) return 0b0110000;
-    if (decimal==4) return 0b0011001;
-    if (decimal==5) return 0b0010010;
-    if (decimal==6) return 0b0000010;
-    if (decimal==7) return 0b1111000;
-    if (decimal==8) return 0b0000000;
-    if (decimal==9) return 0b0011000;
-    if (decimal==10) return 0b0001000;
-    if (decimal==11) return 0b0000011;
-    if (decimal==12) return 0b1000110;
-    if (decimal==13) return 0b0100001;
-    if (decimal==14) return 0b0000110;
-    if (decimal==15) return 0b0001110;
-    else return 0b1000001; //'U' for undefined
+unsigned char decimal_to_seven_seg(int decimal)
+{   //                        CC          CA
+    if (decimal==0) return 0b0111111;//0b1000000;
+    if (decimal==1) return 0b0000110;//0b1111001;
+    if (decimal==2) return 0b1011011;//0b0100100;
+    if (decimal==3) return 0b1001111;//0b0110000;
+    if (decimal==4) return 0b1100110;//0b0011001;
+    if (decimal==5) return 0b1101101;//0b0010010;
+    if (decimal==6) return 0b1111101;//0b0000010;
+    if (decimal==7) return 0b0000111;//0b1111000;
+    if (decimal==8) return 0b1111111;//0b0000000;
+    if (decimal==9) return 0b1100111;//0b0011000;
+    if (decimal==10) return 0b1110111;//0b0001000;
+    if (decimal==11) return 0b1111100;//0b0000011;
+    if (decimal==12) return 0b0111001;//0b1000110;
+    if (decimal==13) return 0b1011110;//0b0100001;
+    if (decimal==14) return 0b1111001;//0b0000110;
+    if (decimal==15) return 0b1110001;//0b0001110;
+    else return 0b0111110;//0b1000001; //'U' for undefined
 }

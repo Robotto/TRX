@@ -1,4 +1,6 @@
 #include <VirtualWire.h>
+//#define ENC_PORT PINC
+
 
 //TODO: Use decimal point in seven segment to indicate acitvation?
 
@@ -7,14 +9,15 @@
 const int seven_segment_pins[]={2,3,4,5,6,7,8};
 //                             DP
 const int seven_segment_DP_pin=9;
-const int btn_left = A0;
-const int btn_middle  = A1;
-const int btn_right = A2;
 
 
-//const int pwm_led = 3;
+const int ENC_A=14; //A0
+const int ENC_B=15; //A1
+const int ENC_BTN=10; //A2
+
+
 const int blink_led =13;
-const int TX_pin = 10;
+const int TX_pin = 11;
 
 const char *msg = "hello";
 
@@ -27,23 +30,22 @@ const char *msg_gr_6 = "GR6";
 const char *msg_gr_7 = "GR7";
 const char *msg_gr_8 = "GR8";
 
-const char *msg_off = "ON";
 const char *msg_kill = "ALL_OFF";
 
 int active_group=1;
 
 void setup() {
 
+    //7seg:
   for(int i = 0; i<8; i++) pinMode(seven_segment_pins[i],OUTPUT);
-
   pinMode(seven_segment_DP_pin, OUTPUT);
 
-  pinMode(12, OUTPUT); //DEBUG - GROUND THE COMMON BTN WIRE
-  digitalWrite(12, LOW);
+   //encoder
+  pinMode(ENC_A, INPUT_PULLUP);
+  pinMode(ENC_B, INPUT_PULLUP);
+  pinMode(ENC_BTN, INPUT_PULLUP);
 
-  pinMode(btn_right, INPUT_PULLUP);
-  pinMode(btn_middle, INPUT_PULLUP);
-  pinMode(btn_left, INPUT_PULLUP);
+
 
    // Initialise the IO and ISR
    vw_set_tx_pin(TX_pin);
@@ -54,37 +56,36 @@ void setup() {
 
 }
 
-void loop() {
+void loop()
+{
 
 
-    read_encoder(); //changes active group
+    //read_encoder(); //changes active group
 
-    read_buttons(); //fires at group
+    //read_buttons(); //fires at group
 
-    //handle_tx(); //sends relevant string
-    //pulse(1,2);
 
-    //if (active_group<1) active_group=1;
-    //if (active_group>8) active_group=8;
+    handle_tx(); //sends relevant string
+
     seven_segment_write_number(active_group);
+
     if(active_group%2) digitalWrite(seven_segment_DP_pin,HIGH);
     else digitalWrite(seven_segment_DP_pin,LOW);
 
-    //delay(1000);
-   // active_group++;
+    active_group++;
+    if(active_group>0xf) active_group=0;
+
+    delay(2000);
+
+
+
+
 
 
 }
 
-void read_encoder()
-{
 
-}
 
-void read_buttons()
-{
-
-}
 
 void handle_tx()
 {

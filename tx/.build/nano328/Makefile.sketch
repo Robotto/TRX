@@ -5,7 +5,7 @@
 
 .build/nano328/src/tx.cpp : src/tx.ino
 	@mkdir -p .build/nano328/src
-	@echo src/tx.ino
+	@echo [93msrc/tx.ino[0m
 	@/usr/local/bin/ino preproc  -o $@ $^
 
 

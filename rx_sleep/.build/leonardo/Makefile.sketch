@@ -1,0 +1,14 @@
+
+
+
+
+
+.build/leonardo/src/rx.cpp : src/rx.ino
+	@mkdir -p .build/leonardo/src
+	@echo src/rx.ino
+	@/usr/local/bin/ino preproc  -o $@ $^
+
+
+all : .build/leonardo/src/rx.cpp
+	@true
+
