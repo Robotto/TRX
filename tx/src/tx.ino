@@ -111,26 +111,26 @@ void pulse(unsigned int pulses, unsigned int delay_time)
 
 void seven_segment_write_number(int decimal)
 {
-    for(int i = 0; i<8; i++) digitalWrite(seven_segment_pins[i],0b00000001&(decimal_to_seven_seg(decimal)>>i));
+    for(int i = 0; i<8; i++) digitalWrite(seven_segment_pins[i],0b00000001&(decimal_to_seven_seg(decimal)>>i)); //for each pin on the 7-seg..
 }
 
 unsigned char decimal_to_seven_seg(int decimal)
-{   //                        CC          CA
-    if (decimal==0) return 0b0111111;//0b1000000;
-    if (decimal==1) return 0b0000110;//0b1111001;
-    if (decimal==2) return 0b1011011;//0b0100100;
-    if (decimal==3) return 0b1001111;//0b0110000;
-    if (decimal==4) return 0b1100110;//0b0011001;
-    if (decimal==5) return 0b1101101;//0b0010010;
-    if (decimal==6) return 0b1111101;//0b0000010;
-    if (decimal==7) return 0b0000111;//0b1111000;
-    if (decimal==8) return 0b1111111;//0b0000000;
-    if (decimal==9) return 0b1100111;//0b0011000;
-    if (decimal==10) return 0b1110111;//0b0001000;
-    if (decimal==11) return 0b1111100;//0b0000011;
-    if (decimal==12) return 0b0111001;//0b1000110;
-    if (decimal==13) return 0b1011110;//0b0100001;
-    if (decimal==14) return 0b1111001;//0b0000110;
-    if (decimal==15) return 0b1110001;//0b0001110;
-    else return 0b0111110;//0b1000001; //'U' for undefined
+{   //                          CC          CA
+    if (decimal==0)  return 0b0111111;	//0b1000000;
+    if (decimal==1)  return 0b0000110;	//0b1111001;
+    if (decimal==2)  return 0b1011011;	//0b0100100;
+    if (decimal==3)  return 0b1001111;	//0b0110000;
+    if (decimal==4)  return 0b1100110;	//0b0011001;
+    if (decimal==5)  return 0b1101101;	//0b0010010;
+    if (decimal==6)  return 0b1111101;	//0b0000010;
+    if (decimal==7)  return 0b0000111;	//0b1111000;
+    if (decimal==8)  return 0b1111111;	//0b0000000;
+    if (decimal==9)  return 0b1100111;	//0b0011000;
+    if (decimal==10) return 0b1110111;	//0b0001000;
+    if (decimal==11) return 0b1111100;	//0b0000011;
+    if (decimal==12) return 0b0111001;	//0b1000110;
+    if (decimal==13) return 0b1011110;	//0b0100001;
+    if (decimal==14) return 0b1111001;	//0b0000110;
+    if (decimal==15) return 0b1110001;	//0b0001110;
+    else return 0b0111110;		//0b1000001; 	//'U' for undefined
 }
