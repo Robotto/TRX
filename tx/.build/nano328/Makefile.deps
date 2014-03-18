@@ -19,7 +19,7 @@
 
 
 .build/nano328/VirtualWire/dependencies.d : .build/nano328/VirtualWire/VirtualWire.d
-	@echo [96mScanning dependencies of VirtualWire[0m
+	@echo Scanning dependencies of VirtualWire
 	@mkdir -p .build/nano328/VirtualWire
 	@cat $^ > $@;
 

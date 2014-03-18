@@ -1,4 +1,4 @@
-//encoders
+subl //encoders
 
 ///////|  Rotary_encoders.h |///////////////////
 // Contains functions for setting up          //
