@@ -48,10 +48,11 @@ GROUP *group_map[NUMBER_OF_GROUPS]={&GR1,&GR2,&GR3,&GR4,&GR5,&GR6,&GR7,&GR8}; //
 
 //char *msg = "hello";
 
-char *msg_on = "ON";
-char *msg_off = "OFF";
-char *msg_kill = "ALL_OFF";
+char *msg_all =    "ALL";
+char *msg_on =      "ON!";
+char *msg_off =     "OFF";
 
+char *tx_string = "      ";
 
 
 /*
@@ -124,12 +125,18 @@ void loop()
 
         ENC_BTN_DEBOUNCED=false; //disarm the button debounce indicator
 
-        handle_tx(group_map[selected_group]->group_message);
+        //first 3 chars = Group ID:
+        for (int i=0;i<3;i++) tx_string[i]=group_map[selected_group]->group_message[i];
 
-        if(group_map[selected_group]->active==true) handle_tx(msg_off);
-        else handle_tx(msg_on);
+        //last 3 chars = ON or OFF:
+        if(group_map[selected_group]->active==true) for (int i=0;i<3;i++) tx_string[i+3]=msg_off[i];
+        for (int i=0;i<3;i++) tx_string[i+3]=msg_on[i];
 
-        group_map[selected_group]->active = !group_map[selected_group]->active; //toogle current state.
+        //send newly constructed string:
+        handle_tx(tx_string);
+
+         //toogle current state.
+        group_map[selected_group]->active = !group_map[selected_group]->active;
 
         }
 

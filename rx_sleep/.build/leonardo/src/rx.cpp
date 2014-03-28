@@ -1,10 +1,11 @@
 #include <Arduino.h>
 #include <VirtualWire.h>
 #include <Enerlib.h>
-void INT0_ISR(void);
+void INT1_ISR(void);
 void setup();
 void loop();
-int rx_string_to_command();
+int group_string_to_int();
+bool rx_to_state();
 void go_to_sleep();
 void pulse(unsigned int pulses, unsigned int delay_time);
 #line 1 "src/rx.ino"
@@ -34,20 +35,25 @@ uint8_t buflen = VW_MAX_MESSAGE_LEN;
 //other stuff:
 bool reset = true;
 int chosen_channel=0;
-bool btn_state = false;
+
+bool btn_triggered = false;
+bool trigger_handled = false;
+bool btn_debounced = true;
 unsigned long btn_timer=0;
 
-String msg_gr_1 = "GR1";
-String msg_gr_2 = "GR2";
-String msg_gr_3 = "GR3";
-String msg_gr_4 = "GR4";
-String msg_gr_5 = "GR5";
-String msg_gr_6 = "GR6";
-String msg_gr_7 = "GR7";
-String msg_gr_8 = "GR8";
-String msg_kill = "ALL_OFF";
+String msg_gr_1 =   "GR1";
+String msg_gr_2 =   "GR2";
+String msg_gr_3 =   "GR3";
+String msg_gr_4 =   "GR4";
+String msg_gr_5 =   "GR5";
+String msg_gr_6 =   "GR6";
+String msg_gr_7 =   "GR7";
+String msg_gr_8 =   "GR8";
+String msg_on =     "ON!";
+String msg_off =    "OFF";
+String msg_all =    "ALL";
 
-void INT0_ISR(void)
+void INT1_ISR(void)
 {
   /*
   The WasSleeping function will return true if Arduino
@@ -56,39 +62,18 @@ void INT0_ISR(void)
   in a low power state. The WasSleeping function should
   only be called in the ISR.
   */
-  if (energy.WasSleeping())
-  {
-    /*
-    Arduino was waked up by IRQ.
+
+  /*
+    If Arduino was waked up by IRQ.
     If you shut down external peripherals before sleeping, you
     can reinitialize them here. Look on ATMega's datasheet for
     hardware limitations in the ISR when microcontroller just
     leave any low power state.
     */
 
-    vw_rx_start();
-    reset=true;
-
+  if (energy.WasSleeping()) reset=true;
+  else btn_triggered=true; //The IRQ happened in awake state.
   }
-  else
-  {
-
-    /*
-    The IRQ happened in awake state.
-
-    This code is for the "normal" ISR.
-    */
-    /*ONLY WORKS IF THIS IS A RISING EDGE TRIGGERED ISR.*/
-
-    if(btn_state==false)
-        {
-            btn_state = true;
-            btn_timer=millis();
-        }
-
-    //else reset=true;
-  }
-}
 
 
 
@@ -107,7 +92,9 @@ void setup() {
 
     pulse(1,1); //hello world
 
-   attachInterrupt(0, INT0_ISR, RISING);
+    pinMode(btn_pin,INPUT_PULLUP);
+
+    attachInterrupt(1, INT1_ISR, FALLING);
 
     /*
   Pin 3 will be the "wake button". Due to uC limitations,
@@ -124,75 +111,65 @@ void setup() {
 
 }
 
-void loop() {
-    //for RX'ing:
-
-    /* check if the button is being continually pressed:*/
-    if (digitalRead(btn_pin)==LOW) btn_state=false;
-    else if (millis()>btn_timer+BTN_TIMEOUT_MS) go_to_sleep();
-
-    /*if newly awaken, we're armed and ready for a channel designation:*/
-    if(reset=true)
-        {
-            if (vw_get_message(buf, &buflen)) //check for message
-            {
-                reset=false;
-                chosen_channel=rx_string_to_command();
-                if (chosen_channel<8) reset=true;
-            }
-        }
-
-    else
-        {
-
-        }
-
-
-    if (vw_get_message(buf, &buflen)) // Non-blocking
+void loop()
     {
-        //int i;
+    //for RX'ing:
+    if (reset) vw_rx_start();
 
-        //rx_string="";
+    /*Button debouncing*/
+    if (btn_triggered) //<-set by ISR1
+    {
+        btn_timer=millis();
+        btn_triggered = false;
+    }
+    if(!digitalRead(btn_pin) && btn_timer+BTN_TIMEOUT_MS>millis()) btn_debounced=true;
+    else btn_debounced=false;
+    /*end of debounce*/
 
-        //digitalWrite(13, true); // Flash a light to show received good message
-        // Message with a good checksum received, dump it.
-        //Serial.print("Got: ");
+    if(btn_debounced) go_to_sleep();
 
-        //for (i = 0; i < buflen; i++) rx_string+=String(char(buf[i]));
+    if (vw_get_message(buf, &buflen)) //check for message
+        {
+            if (reset) /*if newly awaken, we're armed and ready for a channel designation:*/
+                {
+                reset=false; //disarm
+                /*if (rx_to_state())*/ chosen_channel=group_string_to_int(); //designate channel
+                if (chosen_channel==11) reset=true; //error? REARM!
+                }
+
+            else if(chosen_channel==group_string_to_int()) digitalWrite(pwm_led,rx_to_state());
+        }
 
 
-        //if(rx_string=="hello") pulse(1,1);
-
-        //if(rx_string!="") pulse(1,1);
-
-        /*
-        Serial.print("RX: ");
-        Serial.print(rx_string);
-        Serial.println("<--- EOL ");
-        */
     }
 
 
-
-}
-
-int rx_string_to_command()
+int group_string_to_int()
 {
-    String rx_string="";
-    int command=11; //undefined state.
-    for (int i = 0; i < buflen; i++) rx_string+=String(char(buf[i]));
-    if(rx_string==msg_gr_1) command=1;
-    else if(rx_string==msg_gr_2) command=2;
-    else if(rx_string==msg_gr_3) command=3;
-    else if(rx_string==msg_gr_4) command=4;
-    else if(rx_string==msg_gr_5) command=5;
-    else if(rx_string==msg_gr_6) command=6;
-    else if(rx_string==msg_gr_7) command=7;
-    else if(rx_string==msg_gr_8) command=8;
-    else if(rx_string==msg_kill) command=10;
+    String group_string="";
+    int channel=11; //undefined state.
+    for (int i = 0; i < 3; i++) group_string+=String(char(buf[i]));
+    if     (group_string==msg_gr_1) channel=1;
+    else if(group_string==msg_gr_2) channel=2;
+    else if(group_string==msg_gr_3) channel=3;
+    else if(group_string==msg_gr_4) channel=4;
+    else if(group_string==msg_gr_5) channel=5;
+    else if(group_string==msg_gr_6) channel=6;
+    else if(group_string==msg_gr_7) channel=7;
+    else if(group_string==msg_gr_8) channel=8;
+    else if(group_string==msg_all) channel=10;
 
-    return command;
+    return channel; //returns 11 in case of error
 }
+
+bool rx_to_state()
+{
+    String onoff_string="";
+    for(int i=3; i<6;i++) onoff_string+=String(char(buf[i]));
+    if(onoff_string=="ON!") return true;
+    else return false; //else is redundant
+}
+
 
 void go_to_sleep()
 {

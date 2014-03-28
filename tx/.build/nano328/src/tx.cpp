@@ -27,7 +27,8 @@ const int ENC_A=2; //A0 <-MOVED FROM 14
 const int ENC_B=15; //A1
 const int ENC_BTN=3; //A2 <-MOVED FROM 10
 
-//bool ENC_LastA, ENC_LastB=0;
+bool ENC_HAS_MOVED = false;
+
 
 unsigned long ENC_BTN_MILLIS = 0;
 bool ENC_BTN_TRIGGERED = false;
@@ -59,10 +60,11 @@ GROUP *group_map[NUMBER_OF_GROUPS]={&GR1,&GR2,&GR3,&GR4,&GR5,&GR6,&GR7,&GR8}; //
 
 //char *msg = "hello";
 
-char *msg_on = "ON";
-char *msg_off = "OFF";
-char *msg_kill = "ALL_OFF";
+char *msg_all =    "ALL";
+char *msg_on =      "ON!";
+char *msg_off =     "OFF";
 
+char *tx_string = "      ";
 
 
 /*
@@ -120,28 +122,29 @@ void setup() {
 void loop()
 {
 
-
-    seven_segment_write_number(group_map[selected_group]->group_number);
+    if(ENC_HAS_MOVED)
+        {
+        seven_segment_write_number(group_map[selected_group]->group_number);
+        digitalWrite(seven_segment_DP_pin,group_map[selected_group]->active); //indicate whether selected group is active with 7seg decimal point.
+        ENC_HAS_MOVED=false;
+        }
 
     if(ENC_BTN_TRIGGERED) store_button_bounce_time();
-
     if(ENC_BTN_MILLIS_STORED) check_button_bounce();
-
-    digitalWrite(seven_segment_DP_pin,group_map[selected_group]->active); //indicate whether selected group is active with 7seg decimal point.
-
-    //read_encoder(); //changes selected group
-
-    //read_button(); //fires at group
 
     if (ENC_BTN_DEBOUNCED) //BUTTON PRESSED!
         {
 
         ENC_BTN_DEBOUNCED=false; //disarm the button debounce indicator
 
-        handle_tx(group_map[selected_group]->group_message);
+        //handle_tx(group_map[selected_group]->group_message);
+        for (int i=0;i<3;i++) tx_string[i]=group_map[selected_group]->group_message[i];
 
-        if(group_map[selected_group]->active==true) handle_tx(msg_off);
-        else handle_tx(msg_on);
+        if(group_map[selected_group]->active==true) for (int i=0;i<3;i++) tx_string[i+3]=msg_off[i];
+        for (int i=0;i<3;i++) tx_string[i+3]=msg_on[i];
+
+        handle_tx(tx_string);
+
 
         group_map[selected_group]->active = !group_map[selected_group]->active; //toogle current state.
 
@@ -184,6 +187,8 @@ void isr_read_encoder() //triggers on change of ENC_A
     if(selected_group>NUMBER_OF_GROUPS-1) selected_group=0;
     else if(selected_group<0) selected_group=NUMBER_OF_GROUPS-1;
 
+    ENC_HAS_MOVED=true;
+
 
     //if(ENC_LastA != A) //<-Pretty much always true, since the interrupt only fires on change.. so... um.. delete?
     //        {
@@ -210,13 +215,13 @@ void isr_read_encoder() //triggers on change of ENC_A
     //        }
 }
 
-//Called when the main loop readt ENC_BTN_TRIGGERED as true
+//Called when the main loop reads the ENC_BTN_TRIGGERED bool as true
 //ENC_BTN_TRIGGERED is set by the isr_read_button() function when a fallig edge is detected.
 void store_button_bounce_time()
     {
     ENC_BTN_MILLIS=millis(); //store time of change.
-    ENC_BTN_TRIGGERED=false;
-    ENC_BTN_MILLIS_STORED=true;
+    ENC_BTN_TRIGGERED=false; //reset the ISR triggered bool
+    ENC_BTN_MILLIS_STORED=true; //arm the check routine
     }
 
 //Called when the main loop reads the ENC_BTN_MILLIS_STORED bool as true,
@@ -226,7 +231,7 @@ void check_button_bounce()
     if ((millis()>ENC_BTN_MILLIS+DEBOUNCE_VAL) && (digitalRead(ENC_BTN)==LOW))
         {
             ENC_BTN_DEBOUNCED=true;
-            ENC_BTN_MILLIS_STORED=false;
+            ENC_BTN_MILLIS_STORED=false; //disarm this routine
         }
     else ENC_BTN_DEBOUNCED=false;
 }
