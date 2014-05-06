@@ -210,7 +210,7 @@ void store_button_bounce_time()
 //this causes the main loop to store current millis in ENC_BTN_MILLIS and set ENC_BTN_MILLIS_STORED to true
 void check_button_bounce()
 {
-    if ((millis()>ENC_BTN_MILLIS+DEBOUNCE_VAL) && (digitalRead(ENC_BTN)==LOW))
+    if ((millis()>ENC_BTN_MILLIS+DEBOUNCE_VAL) /*&& (digitalRead(ENC_BTN)==LOW)*/) //triggered on falling edge, so no need to check state
         {
             ENC_BTN_DEBOUNCED=true;
             ENC_BTN_MILLIS_STORED=false; //disarm this routine
