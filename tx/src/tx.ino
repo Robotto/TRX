@@ -2,7 +2,7 @@
 #define DEBOUNCE_VAL 15
 #define NUMBER_OF_GROUPS 8
 
-#define DEBUG
+//#define DEBUG
 
 //TODO: Use decimal point in seven segment to indicate activation?
 
@@ -172,7 +172,7 @@ void loop()
         Serial.print("Trigger time: ");
         Serial.println(group_map[selected_group]->trigger_time);
         Serial.print("Timeout: ");
-        Serial.println(group_map[i]->countdown_secs);
+        Serial.println(group_map[selected_group]->countdown_secs);
         #endif
 
          //toogle current state.
