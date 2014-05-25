@@ -2,7 +2,7 @@
 #include <Enerlib.h>
 
 //#define DEBUG
-#define BEEP
+//#define BEEP
 
 #define DEBOUNCE_MS 200
 //#define SLEEPMODE() energy.Idle();
@@ -58,6 +58,7 @@ void INT0_ISR(void)
     #ifdef BEEP
     beep();
     #endif
+    pulse(1,1);
     state=0;
     state_handled=false;
     reset=true;
