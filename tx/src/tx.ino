@@ -2,6 +2,8 @@
 #define DEBOUNCE_VAL 15
 #define NUMBER_OF_GROUPS 8
 
+#define DEBUG
+
 //TODO: Use decimal point in seven segment to indicate activation?
 
 
@@ -25,15 +27,21 @@ bool ENC_BTN_TRIGGERED = false;
 bool ENC_BTN_MILLIS_STORED = false;
 bool ENC_BTN_DEBOUNCED = false;
 
+bool countdown_btn_released=true;
+
 const int blink_led = 13;
 const int TX_pin = 11;
+
+const int blink_switch=A4;
+const int btn_pin=A2;
+const int countdown_led=A3;
 
 typedef struct //group struct
 {
   int group_number;
-  char *group_message;
   bool active;
-  //bool last_state;
+  int countdown_secs;
+  unsigned long trigger_time;
 } GROUP;
 
 //instatitation of the group structs:
@@ -50,11 +58,11 @@ GROUP *group_map[NUMBER_OF_GROUPS]={&GR1,&GR2,&GR3,&GR4,&GR5,&GR6,&GR7,&GR8}; //
 
 //char *msg = "hello";
 
-char *msg_all =    "ALL";
 char *msg_on =      "ON!";
 char *msg_off =     "OFF";
+char *msg_blink=    "BLK";
 
-char *tx_string = "      ";
+char *tx_string = "GRxxxx";
 
 
 /*
@@ -74,14 +82,17 @@ int selected_group=0;
 
 void setup() {
 
+    #ifdef DEBUG
+    Serial.begin(9600);
+    #endif
     /*-------- Memory ---------*/
 
     for(int i = 0;i < NUMBER_OF_GROUPS;i++)
         {
             group_map[i]->group_number=i+1;
             group_map[i]->active=LOW;
-            group_map[i]->group_message="GR"; //makes group messages be "GR1" to "GR8"
-            group_map[i]->group_message+=i+1;
+            group_map[i]->trigger_time=0;
+            group_map[i]->countdown_secs=0;
         }
 
     /*-------- IO ----------*/
@@ -95,6 +106,10 @@ void setup() {
     pinMode(ENC_B, INPUT_PULLUP);
     pinMode(ENC_BTN, INPUT_PULLUP);
 
+    //other I/O
+    pinMode(blink_switch,INPUT_PULLUP);
+    pinMode(btn_pin,INPUT_PULLUP);
+    pinMode(countdown_led,OUTPUT);
 
 
     // Initialise the IO and ISR
@@ -118,7 +133,14 @@ void loop()
         seven_segment_write_number(group_map[selected_group]->group_number);
         digitalWrite(seven_segment_DP_pin,group_map[selected_group]->active); //indicate whether selected group is active with 7seg decimal point.
         ENC_HAS_MOVED=false; //disarm the encoder move indicator
+
+        #ifdef DEBUG
+        Serial.print("Selected group: ");
+        Serial.println( selected_group+1 );
+        #endif
+
         }
+
 
     if(ENC_BTN_TRIGGERED) store_button_bounce_time();
     if(ENC_BTN_MILLIS_STORED) check_button_bounce();
@@ -128,26 +150,99 @@ void loop()
 
         ENC_BTN_DEBOUNCED=false; //disarm the button debounce indicator
 
-        //first 3 chars = Group ID:
-        for (int i=0;i<3;i++) tx_string[i]=group_map[selected_group]->group_message[i];
+        //3rd char = Group ID:
+        tx_string[2]=(char)group_map[selected_group]->group_number+48; //48 = ascii (char)offset
 
-        //last 3 chars = ON or OFF:
         if(group_map[selected_group]->active==true) for (int i=0;i<3;i++) tx_string[i+3]=msg_off[i];
+
+        else if (!digitalRead(blink_switch)) for (int i=0;i<3;i++) tx_string[i+3]=msg_blink[i];
         else for (int i=0;i<3;i++) tx_string[i+3]=msg_on[i];
 
         //send newly constructed string:
         handle_tx(tx_string);
+        handle_tx(tx_string);
+        handle_tx(tx_string);
+
+        if(group_map[selected_group]->countdown_secs) group_map[selected_group]->trigger_time=millis();
+
+        #ifdef DEBUG
+        Serial.print("TX: ");
+        Serial.println(tx_string);
+
+        Serial.print("Trigger time: ");
+        Serial.println(group_map[selected_group]->trigger_time);
+        Serial.print("Timeout: ");
+        Serial.println(group_map[i]->countdown_secs);
+        #endif
 
          //toogle current state.
         group_map[selected_group]->active = !group_map[selected_group]->active;
-        digitalWrite(seven_segment_DP_pin,group_map[selected_group]->active); //indicate whether selected group is active with 7seg decimal point.
-        //        redraw...
-        seven_segment_write_number(group_map[selected_group]->group_number);
         }
+
+        unsigned long millis_for_this_loop=millis();
+        for(int i=0;i<NUMBER_OF_GROUPS;i++)
+            {
+            if(group_map[i]->active==false) continue; //skip this group
+            if(group_map[i]->countdown_secs==0) continue; // -||-
+            if(group_map[i]->trigger_time==0) continue; // -||-
+
+            if(millis_for_this_loop-(group_map[i]->countdown_secs*1000.0)>group_map[i]->trigger_time)
+                    {
+                        //construct tx_string:
+                    tx_string[2]=(char)group_map[i]->group_number+48; //48 = ascii (char)offset
+                    for (int i=0;i<3;i++) tx_string[i+3]=msg_off[i];
+                        //tx:
+                    handle_tx(tx_string);
+                    handle_tx(tx_string);
+                    handle_tx(tx_string);
+
+                    #ifdef DEBUG
+                    Serial.print("TX: ");
+                    Serial.println(tx_string);
+                    Serial.print("Trigger time: ");
+                    Serial.println(group_map[i]->trigger_time);
+                    Serial.print("Timeout: ");
+                    Serial.println(group_map[i]->countdown_secs);
+                    Serial.print("Timeout time: ");
+                    Serial.println(millis_for_this_loop);
+                    #endif
+
+                    group_map[i]->active=false;
+                    group_map[i]->trigger_time = 0;
+                    }
+            }
+
+
+        while(!digitalRead(btn_pin))
+            {
+                if(countdown_btn_released)
+                    {
+                    group_map[selected_group]->countdown_secs=0;
+                    countdown_btn_released=false;
+                    }
+                digitalWrite(countdown_led,HIGH);
+                seven_segment_write_number(group_map[selected_group]->countdown_secs);
+
+                if(ENC_BTN_TRIGGERED) //both buttons are pushed.
+                    {
+                        handle_tx("ALLOFF");
+                        handle_tx("ALLOFF");
+                        handle_tx("ALLOFF");
+                        ENC_BTN_TRIGGERED=false;
+                        for(int i=0;i<NUMBER_OF_GROUPS;i++) group_map[i]->active=false;
+                    }
+
+            }
+        countdown_btn_released=true;
+
+        //        redraw...
+        digitalWrite(seven_segment_DP_pin,group_map[selected_group]->active); //indicate whether selected group is active with 7seg decimal point.
+        seven_segment_write_number(group_map[selected_group]->group_number); //write proper number
+
+        //set countdown led if a countdown is set:
+        if(group_map[selected_group]->countdown_secs) digitalWrite(countdown_led,HIGH);
+        else digitalWrite(countdown_led,LOW);
 }
-
-
-
 
 
 void handle_tx(char *msg)
@@ -174,7 +269,8 @@ void isr_read_encoder() //triggers on change of ENC_A , but divides by 2 to make
 
         if(cw_divider)
         {
-            selected_group--; //CW
+            if (digitalRead(btn_pin)) selected_group--; //CW
+            else group_map[selected_group]->countdown_secs--;
             cw_divider=false;
         }
         else cw_divider=true;
@@ -184,7 +280,8 @@ void isr_read_encoder() //triggers on change of ENC_A , but divides by 2 to make
         cw_divider=false;
         if(ccw_divider)
             {
-                selected_group++; //CCW
+                if (digitalRead(btn_pin)) selected_group++; //CCW
+                else group_map[selected_group]->countdown_secs++;
                 ccw_divider=false;
             }
         else ccw_divider=true;
@@ -193,6 +290,11 @@ void isr_read_encoder() //triggers on change of ENC_A , but divides by 2 to make
     //0-7
     if(selected_group>NUMBER_OF_GROUPS-1) selected_group=0;
     else if(selected_group<0) selected_group=NUMBER_OF_GROUPS-1;
+
+    //0-9
+    if(group_map[selected_group]->countdown_secs>9) group_map[selected_group]->countdown_secs=0;
+    else if (group_map[selected_group]->countdown_secs<0) group_map[selected_group]->countdown_secs=9;
+
 
     ENC_HAS_MOVED=true;
 }
