@@ -136,19 +136,17 @@ void loop()
 int group_string_to_int()
 {
     String group_string="";
-    int channel=11; //undefined state.
     for (int i = 0; i < 3; i++) group_string+=String(char(buf[i]));
-    if     (group_string==msg_gr_1) channel=1;
-    else if(group_string==msg_gr_2) channel=2;
-    else if(group_string==msg_gr_3) channel=3;
-    else if(group_string==msg_gr_4) channel=4;
-    else if(group_string==msg_gr_5) channel=5;
-    else if(group_string==msg_gr_6) channel=6;
-    else if(group_string==msg_gr_7) channel=7;
-    else if(group_string==msg_gr_8) channel=8;
-    else if(group_string==msg_all) channel=10;
-
-    return channel; //returns 11 in case of error
+    if     (group_string==msg_gr_1) return 1;
+    else if(group_string==msg_gr_2) return 2;
+    else if(group_string==msg_gr_3) return 3;
+    else if(group_string==msg_gr_4) return 4;
+    else if(group_string==msg_gr_5) return 5;
+    else if(group_string==msg_gr_6) return 6;
+    else if(group_string==msg_gr_7) return 7;
+    else if(group_string==msg_gr_8) return 8;
+    else if(group_string==msg_all)  return 10;
+    else return 11; //in case of error
 }
 
 bool rx_to_state()
