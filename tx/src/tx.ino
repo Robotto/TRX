@@ -5,17 +5,19 @@
 //TODO: Use decimal point in seven segment to indicate activation?
 
 
-//                              A,B,C,D,E,F,G <- A moved from 2, B moved from 3
+//                              A,B,C,D,E,F,G
 const int seven_segment_pins[]={10,14,4,5,6,7,8};
 //                             DP
 const int seven_segment_DP_pin=9;
 
 
-const int ENC_A=2; //A0 <-MOVED FROM 14
+const int ENC_A=2;
 const int ENC_B=15; //A1
-const int ENC_BTN=3; //A2 <-MOVED FROM 10
+const int ENC_BTN=3;
 
 bool ENC_HAS_MOVED = false;
+bool cw_divider=false;
+bool ccw_divider=false;
 
 
 unsigned long ENC_BTN_MILLIS = 0;
@@ -67,7 +69,7 @@ const char *msg_gr_8 = "GR8";
 */
 
 
-int selected_group=1;
+int selected_group=0;
 
 
 void setup() {
@@ -85,7 +87,7 @@ void setup() {
     /*-------- IO ----------*/
 
     //7seg:
-    for(int i = 0; i<8; i++) pinMode(seven_segment_pins[i],OUTPUT);
+    for(int i = 0; i<7; i++) pinMode(seven_segment_pins[i],OUTPUT);
     pinMode(seven_segment_DP_pin, OUTPUT);
 
     //encoder
@@ -105,6 +107,7 @@ void setup() {
     //ATTACH INTERRUPT 1 (pin 3) ON CHANGE FOR ENCODER BUTTON, to call the read_button() function
     attachInterrupt(1, isr_read_button, LOW);
 
+    seven_segment_write_number(group_map[selected_group]->group_number);
 }
 
 void loop()
@@ -114,7 +117,7 @@ void loop()
         {
         seven_segment_write_number(group_map[selected_group]->group_number);
         digitalWrite(seven_segment_DP_pin,group_map[selected_group]->active); //indicate whether selected group is active with 7seg decimal point.
-        ENC_HAS_MOVED=false;
+        ENC_HAS_MOVED=false; //disarm the encoder move indicator
         }
 
     if(ENC_BTN_TRIGGERED) store_button_bounce_time();
@@ -130,22 +133,17 @@ void loop()
 
         //last 3 chars = ON or OFF:
         if(group_map[selected_group]->active==true) for (int i=0;i<3;i++) tx_string[i+3]=msg_off[i];
-        for (int i=0;i<3;i++) tx_string[i+3]=msg_on[i];
+        else for (int i=0;i<3;i++) tx_string[i+3]=msg_on[i];
 
         //send newly constructed string:
         handle_tx(tx_string);
 
          //toogle current state.
         group_map[selected_group]->active = !group_map[selected_group]->active;
-
+        digitalWrite(seven_segment_DP_pin,group_map[selected_group]->active); //indicate whether selected group is active with 7seg decimal point.
+        //        redraw...
+        seven_segment_write_number(group_map[selected_group]->group_number);
         }
-
-    /*if(active_group%2) digitalWrite(seven_segment_DP_pin,HIGH);
-    else digitalWrite(seven_segment_DP_pin,LOW);*/
-
-    //active_group++;
-    //if(active_group>0xf) active_group=0;
-
 }
 
 
@@ -165,44 +163,38 @@ void isr_read_button() //triggers on a falling edge of ENC_BTN pin
     ENC_BTN_TRIGGERED = true; //set to false when reacting to flag.
 }
 
-void isr_read_encoder() //triggers on change of ENC_A
+void isr_read_encoder() //triggers on change of ENC_A , but divides by 2 to make it match the hardware click of the encoder
 {
     bool A = digitalRead(ENC_A);
     bool B = digitalRead(ENC_B);
 
-    if(A!=B) selected_group++; //CW
-    else selected_group--; //CCW
+    if(A!=B)
+    {
+        ccw_divider=false;
+
+        if(cw_divider)
+        {
+            selected_group--; //CW
+            cw_divider=false;
+        }
+        else cw_divider=true;
+    }
+    else
+    {
+        cw_divider=false;
+        if(ccw_divider)
+            {
+                selected_group++; //CCW
+                ccw_divider=false;
+            }
+        else ccw_divider=true;
+    }
 
     //0-7
     if(selected_group>NUMBER_OF_GROUPS-1) selected_group=0;
     else if(selected_group<0) selected_group=NUMBER_OF_GROUPS-1;
 
     ENC_HAS_MOVED=true;
-
-
-    //if(ENC_LastA != A) //<-Pretty much always true, since the interrupt only fires on change.. so... um.. delete?
-    //        {
-                /*
-            if     (A == FALSE & B == TRUE) active_group++;  //CW rotation
-            else if(A == TRUE & B == FALSE) active_group++;  //CW rotation
-            else if(A == FALSE & B == FALSE) active_group--;  //CCW rotation
-            else if(A == TRUE & B == TRUE) active_group--;  //CCW rotation
-                */
-
-                /*
-            if (A==TRUE)
-                {
-                    if (B==FALSE) active_group++; //A=1,B=0
-                    else active_group--; // A=1,B=1
-                }
-            else
-                {
-                    if (B==TRUE) active_group++; //A=0,B=1
-                    else active_group--; //A=0,B=0
-                }
-            ENC_LastA = A;
-                */
-    //        }
 }
 
 //Called when the main loop reads the ENC_BTN_TRIGGERED bool as true
@@ -218,7 +210,7 @@ void store_button_bounce_time()
 //this causes the main loop to store current millis in ENC_BTN_MILLIS and set ENC_BTN_MILLIS_STORED to true
 void check_button_bounce()
 {
-    if ((millis()>ENC_BTN_MILLIS+DEBOUNCE_VAL) && (digitalRead(ENC_BTN)==LOW))
+    if ((millis()>ENC_BTN_MILLIS+DEBOUNCE_VAL) /*&& (digitalRead(ENC_BTN)==LOW)*/) //triggered on falling edge, so no need to check state
         {
             ENC_BTN_DEBOUNCED=true;
             ENC_BTN_MILLIS_STORED=false; //disarm this routine
@@ -230,7 +222,6 @@ void check_button_bounce()
 void seven_segment_write_number(int decimal)
 {
     for(int i = 0; i<8; i++) digitalWrite(seven_segment_pins[i],0b00000001&(decimal_to_seven_seg(decimal)>>i)); //for each pin on the 7-seg.. shift out the corresponding bit of the "decimal" byte.
-
 }
 
 unsigned char decimal_to_seven_seg(int decimal)
@@ -255,23 +246,4 @@ unsigned char decimal_to_seven_seg(int decimal)
         case 15: return 0b1110001;  //0b0001110;
         default: return 0b0111110;  //0b1000001;    //'U' for undefined
     }
-    /*
-    if (decimal==0)  return 0b0111111;  //0b1000000;
-    if (decimal==1)  return 0b0000110;  //0b1111001;
-    if (decimal==2)  return 0b1011011;  //0b0100100;
-    if (decimal==3)  return 0b1001111;  //0b0110000;
-    if (decimal==4)  return 0b1100110;  //0b0011001;
-    if (decimal==5)  return 0b1101101;  //0b0010010;
-    if (decimal==6)  return 0b1111101;  //0b0000010;
-    if (decimal==7)  return 0b0000111;  //0b1111000;
-    if (decimal==8)  return 0b1111111;  //0b0000000;
-    if (decimal==9)  return 0b1100111;  //0b0011000;
-    if (decimal==10) return 0b1110111;  //0b0001000;
-    if (decimal==11) return 0b1111100;  //0b0000011;
-    if (decimal==12) return 0b0111001;  //0b1000110;
-    if (decimal==13) return 0b1011110;  //0b0100001;
-    if (decimal==14) return 0b1111001;  //0b0000110;
-    if (decimal==15) return 0b1110001;  //0b0001110;
-    else return 0b0111110;      //0b1000001;    //'U' for undefined
-    */
 }

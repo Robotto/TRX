@@ -154,7 +154,7 @@ bool rx_to_state()
     String onoff_string="";
     for(int i=3; i<6;i++) onoff_string+=String(char(buf[i]));
     if(onoff_string=="ON!") return true;
-    else return false; //else is redundant
+    return false; //an else would be redundant
 }
 
 
