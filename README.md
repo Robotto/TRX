@@ -1,6 +1,8 @@
 TRX
 ===
 
+Edit: If i were to implement this from scratch, I would probably use the RadioHead library: http://www.airspayce.com/mikem/arduino/RadioHead/
+
 Arduino nanos talking wirelessly using the virtualwire library and some cheap chinese TX / RX modules.
 
 The basestation (TX) can choose which of 8 groups to activate (which will deactivate the rest)
